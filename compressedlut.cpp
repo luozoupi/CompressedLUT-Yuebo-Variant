@@ -4,7 +4,9 @@
 ----------------------------------------------------
 */
 #include "compressedlut.h"
+#include "exprtk.hpp"
 
+#ifndef COMPRESSEDLUT_NO_MAIN
 int main(int argc, char* argv[]) 
 {
     string filename = "logo.txt";
@@ -175,9 +177,11 @@ int main(int argc, char* argv[])
     return 0;
 
 }
+#endif
 
-void compressedlut::compressedlut(const vector<long int>& table_data, const string& table_name, const string& output_path, struct struct_configs configs, long int* initial_size, vector<long int>& final_size)
+compressedlut::CompressedTable compressedlut::compress_table_artifact(const vector<long int>& table_data, struct struct_configs configs)
 {
+    CompressedTable artifact;
     vector<vector<long int>> all_cost;
     vector<int> all_w_in, all_w_out, all_w_l, all_w_s;
     vector<vector<long int>> all_t_lb, all_t_ust, all_t_bias, all_t_idx, all_t_rsh;
@@ -190,7 +194,7 @@ void compressedlut::compressedlut(const vector<long int>& table_data, const stri
         int w_out = bit_width(*max_element(t.begin(), t.end()));
 
         bool compressed = 0;
-        long int best_cost = (1 << w_in) * w_out;
+        long int best_cost = ((long int)1 << w_in) * w_out;
         int best_w_l, best_w_s;
         vector<long int> best_t_lb, best_t_ust, best_t_bias, best_t_idx, best_t_rsh;
 
@@ -206,7 +210,7 @@ void compressedlut::compressedlut(const vector<long int>& table_data, const stri
                 t_lb.push_back(t.at(i) & (((long int)1 << w_l) - 1));
             }
             
-            long int cost_t_lb = (1 << w_in) * bit_width(*max_element(t_lb.begin(), t_lb.end()));
+            long int cost_t_lb = ((long int)1 << w_in) * bit_width(*max_element(t_lb.begin(), t_lb.end()));
 
             for(int w_s = configs.mdbw; w_s < w_in ; w_s++)
             {
@@ -229,7 +233,7 @@ void compressedlut::compressedlut(const vector<long int>& table_data, const stri
 
         if(compressed)
         {
-            vector<long int> cost = {(1 << w_in) * w_out, best_cost};
+            vector<long int> cost = {((long int)1 << w_in) * w_out, best_cost};
             all_cost.push_back(cost);
             all_w_in.push_back(w_in);
             all_w_out.push_back(w_out);
@@ -241,7 +245,7 @@ void compressedlut::compressedlut(const vector<long int>& table_data, const stri
             all_t_idx.push_back(best_t_idx);
             all_t_rsh.push_back(best_t_rsh);
 
-            if((best_t_bias.size() >= (1 << (configs.mdbw+1))) && configs.mlc)
+            if((best_t_bias.size() >= ((long int)1 << (configs.mdbw+1))) && configs.mlc)
                 t = best_t_bias; 
             else
                 break;
@@ -252,12 +256,113 @@ void compressedlut::compressedlut(const vector<long int>& table_data, const stri
 
     if(all_w_in.size() != 0)
     {
-        *initial_size = all_cost.at(0).at(0);
-        final_size.push_back(all_cost.at(0).at(1));
+        artifact.initial_size = all_cost.at(0).at(0);
+        artifact.final_size.push_back(all_cost.at(0).at(1));
         for(int i = 1; i < all_w_in.size(); i++)
-            final_size.push_back(final_size.at(i-1) - all_cost.at(i).at(0) + all_cost.at(i).at(1));
+            artifact.final_size.push_back(artifact.final_size.at(i-1) - all_cost.at(i).at(0) + all_cost.at(i).at(1));
 
         for(int i = 0; i < all_w_in.size(); i++)
+        {
+            CompressedLevel level;
+            level.w_in = all_w_in.at(i);
+            level.w_out = all_w_out.at(i);
+            level.w_l = all_w_l.at(i);
+            level.w_s = all_w_s.at(i);
+            level.initial_cost = all_cost.at(i).at(0);
+            level.compressed_cost = all_cost.at(i).at(1);
+            level.t_lb = all_t_lb.at(i);
+            level.t_ust = all_t_ust.at(i);
+            level.t_bias = all_t_bias.at(i);
+            level.t_idx = all_t_idx.at(i);
+            level.t_rsh = all_t_rsh.at(i);
+            level.w_lb = (level.t_lb.size() == 0)? 0 : bit_width(*max_element(level.t_lb.begin(), level.t_lb.end()));
+            level.w_ust = (level.t_ust.size() == 0)? 0 : bit_width(*max_element(level.t_ust.begin(), level.t_ust.end()));
+            level.w_bias = (level.t_bias.size() == 0)? 0 : bit_width(*max_element(level.t_bias.begin(), level.t_bias.end()));
+            level.w_idx = (level.t_idx.size() == 0)? 0 : bit_width(*max_element(level.t_idx.begin(), level.t_idx.end()));
+            level.w_rsh = (level.t_rsh.size() == 0)? 0 : bit_width(*max_element(level.t_rsh.begin(), level.t_rsh.end()));
+            artifact.levels.push_back(level);
+        }
+    }
+
+    return artifact;
+}
+
+long int compressedlut::decode_level(const CompressedTable& table, size_t level_index, long int address)
+{
+    const CompressedLevel& level = table.levels[level_index];
+    const long int high_address = address >> level.w_s;
+    const long int low_mask = ((long int)1 << level.w_s) - 1;
+    const long int low_address = address & low_mask;
+
+    long int b = 0;
+    if(level.w_bias != 0)
+    {
+        if(level_index + 1 < table.levels.size())
+            b = decode_level(table, level_index + 1, high_address);
+        else
+            b = level.t_bias[high_address];
+    }
+
+    long int u = 0;
+    if(level.w_ust != 0)
+    {
+        long int ust_address = address;
+        if(level.t_idx.size() != 0)
+        {
+            if(level.w_idx != 0)
+                ust_address = (level.t_idx[high_address] << level.w_s) | low_address;
+            else
+                ust_address = low_address;
+        }
+        u = level.t_ust[ust_address];
+    }
+
+    long int t = 0;
+    if(level.w_rsh != 0)
+        t = level.t_rsh[high_address];
+
+    long int high_value = ((level.w_ust != 0)? (u >> t) : 0) + ((level.w_bias != 0)? b : 0);
+    if(level.w_l == 0)
+        return high_value;
+
+    long int lb = 0;
+    if(level.w_lb != 0)
+        lb = level.t_lb[address];
+    return (high_value << level.w_l) | lb;
+}
+
+long int compressedlut::decode(const CompressedTable& table, long int address)
+{
+    return decode_level(table, 0, address);
+}
+
+void compressedlut::compressedlut(const vector<long int>& table_data, const string& table_name, const string& output_path, struct struct_configs configs, long int* initial_size, vector<long int>& final_size)
+{
+    CompressedTable artifact = compress_table_artifact(table_data, configs);
+
+    if(artifact.is_compressed())
+    {
+        vector<int> all_w_in, all_w_out, all_w_l, all_w_s;
+        vector<vector<long int>> all_t_lb, all_t_ust, all_t_bias, all_t_idx, all_t_rsh;
+
+        *initial_size = artifact.initial_size;
+        final_size = artifact.final_size;
+
+        for(size_t i = 0; i < artifact.levels.size(); i++)
+        {
+            const CompressedLevel& level = artifact.levels.at(i);
+            all_w_in.push_back(level.w_in);
+            all_w_out.push_back(level.w_out);
+            all_w_l.push_back(level.w_l);
+            all_w_s.push_back(level.w_s);
+            all_t_lb.push_back(level.t_lb);
+            all_t_ust.push_back(level.t_ust);
+            all_t_bias.push_back(level.t_bias);
+            all_t_idx.push_back(level.t_idx);
+            all_t_rsh.push_back(level.t_rsh);
+        }
+
+        for(size_t i = 0; i < artifact.levels.size(); i++)
         {
             string rtl_file_path = output_path + "/" + table_name + "_v" + to_string(i + 1) + ".v";
             string hls_file_path = output_path + "/" + table_name + "_v" + to_string(i + 1) + ".cpp";
@@ -271,8 +376,8 @@ long int compressedlut::hb_compression(bool ssc, const vector<long int>& t_hb, i
 {
     const int w_in = bit_width(t_hb.size()-1);
     const int w_out = bit_width(*max_element(t_hb.begin(), t_hb.end()));
-    const long int num_sub_table = (1 << (w_in - w_s));
-    const  int len_sub_table = (1 << w_s);
+    const long int num_sub_table = ((long int)1 << (w_in - w_s));
+    const  int len_sub_table = ((long int)1 << w_s);
 
     vector<long int> t_st(num_sub_table*len_sub_table);
 
@@ -289,7 +394,7 @@ long int compressedlut::hb_compression(bool ssc, const vector<long int>& t_hb, i
         t_ust = t_st;
         int w_bias = bit_width(*max_element(t_bias.begin(), t_bias.end()));
         int w_ust =  bit_width(*max_element(t_ust.begin(), t_ust.end()));
-        return (1 << w_in) * w_ust + (1 << (w_in - w_s)) * w_bias; 
+        return ((long int)1 << w_in) * w_ust + ((long int)1 << (w_in - w_s)) * w_bias;
     }
     else
     {
@@ -401,7 +506,7 @@ long int compressedlut::hb_compression(bool ssc, const vector<long int>& t_hb, i
     int w_bias = bit_width(*max_element(t_bias.begin(), t_bias.end()));
     int w_rsh = bit_width(*max_element(t_rsh.begin(), t_rsh.end()));
     int w_idx = bit_width(*max_element(t_idx.begin(), t_idx.end()));
-    return t_ust.size() * w_ust + (1 << (w_in - w_s)) * (w_bias + w_rsh + w_idx);
+    return t_ust.size() * w_ust + ((long int)1 << (w_in - w_s)) * (w_bias + w_rsh + w_idx);
 }
 
 void compressedlut::rtl(const string& file_path, const string& table_name, const vector<int>& all_w_in, const vector<int>& all_w_out, const vector<int>& all_w_l, const vector<int>& all_w_s, const vector<vector<long int>>& all_t_lb, const vector<vector<long int>>& all_t_ust, const vector<vector<long int>>& all_t_bias, const vector<vector<long int>>& all_t_idx, const vector<vector<long int>>& all_t_rsh, int max_level)

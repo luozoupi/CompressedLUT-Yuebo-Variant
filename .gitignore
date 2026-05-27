@@ -1,0 +1,9 @@
+compressedlut
+*.o
+benchmarks/bench_cpu
+benchmarks/bench_cuda
+benchmarks/v2/bench_cuda_v2
+bench_results/
+__pycache__/
+*.pyc
+3626202.3637575.pdf

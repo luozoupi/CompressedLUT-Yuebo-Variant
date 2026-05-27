@@ -4,12 +4,46 @@ Lookup tables are widely used in hardware applications to store arrays of consta
 CompressedLUT has been developed as a part of the following publication. Please refer to it for more information.
 > Alireza Khataei and Kia Bazargan. 2024. CompressedLUT: An Open Source Tool for Lossless Compression of Lookup Tables for Function Evaluation and Beyond. In Proceedings of the 2024 ACM/SIGDA International Symposium on Field Programmable Gate Arrays (FPGA ’24), March 3–5, 2024, Monterey, CA, USA. ACM, New York, NY, USA, 10 pages. https://doi.org/10.1145/3626202.3637575
 
+## Yuebo CPU/CUDA Benchmark Variant
+This fork adds reusable CPU and CUDA benchmark infrastructure around the original CompressedLUT compressor. The original command-line tool and Verilog/HLS generation flow are preserved, while the compressor can also expose an in-memory artifact for software decoding and GPU experiments.
+
+Added components:
+- CPU benchmarks for plain LUT, CompressedLUT decode, and libm function evaluation.
+- CUDA benchmarks for plain LUT, CompressedLUT decode, and CUDA math-function evaluation.
+- Nsight Systems and Nsight Compute profiling scripts for per-LUT hardware analysis.
+- A CUDA v2 experiment under `benchmarks/v2/` that keeps the compact storage artifact but uses a GPU-oriented runtime layout.
+
+Start with [docs/YUEBO_VARIANT.md](docs/YUEBO_VARIANT.md) for the benchmark design, reproduction commands, and measured results. Operational benchmark usage is documented in [benchmarks/README.md](benchmarks/README.md), and the v2 experiment is documented in [benchmarks/v2/README.md](benchmarks/v2/README.md).
+
+Quick build:
+
+```bash
+make all bench_cpu bench_cuda bench_cuda_v2
+```
+
+Quick benchmark smoke test:
+
+```bash
+/home/luo00466/miniconda3/envs/py310/bin/python benchmarks/run_benchmarks.py --quick --device 7 --out bench_results/quick
+/home/luo00466/miniconda3/envs/py310/bin/python benchmarks/v2/run_v2_benchmarks.py --quick --device 7 --out bench_results/v2_quick
+```
+
 ## Authors
 - Alireza Khataei, University of Minnesota, Minneapolis, MN, USA
 - Kia Bazargan (kia@umn.edu), University of Minnesota, Minneapolis, MN, USA
 
 
 ## Installation
+For this CPU/CUDA benchmark variant:
+
+```bash
+git clone https://github.com/luozoupi/CompressedLUT-Yuebo-Variant.git
+cd CompressedLUT-Yuebo-Variant
+make all bench_cpu bench_cuda bench_cuda_v2
+```
+
+For the original upstream tool only:
+
 ```bash
 git clone https://github.com/kiabuzz/CompressedLUT.git
 cd CompressedLUT
