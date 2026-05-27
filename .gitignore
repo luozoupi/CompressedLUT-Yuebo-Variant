@@ -3,6 +3,9 @@ compressedlut
 benchmarks/bench_cpu
 benchmarks/bench_cuda
 benchmarks/v2/bench_cuda_v2
+benchmarks/pivots/large_lut/bench_large_lut
+benchmarks/pivots/many_lut/bench_many_lut
+benchmarks/pivots/llm_lut/bench_llm_lut
 bench_results/
 __pycache__/
 *.pyc

@@ -12,13 +12,15 @@ Added components:
 - CUDA benchmarks for plain LUT, CompressedLUT decode, and CUDA math-function evaluation.
 - Nsight Systems and Nsight Compute profiling scripts for per-LUT hardware analysis.
 - A CUDA v2 experiment under `benchmarks/v2/` that keeps the compact storage artifact but uses a GPU-oriented runtime layout.
+- Pivot benchmarks under `benchmarks/pivots/` for large LUTs, many-LUT cache pressure, and LLM-style grouped LUT traffic.
 
-Start with [docs/YUEBO_VARIANT.md](docs/YUEBO_VARIANT.md) for the benchmark design, reproduction commands, and measured results. Operational benchmark usage is documented in [benchmarks/README.md](benchmarks/README.md), and the v2 experiment is documented in [benchmarks/v2/README.md](benchmarks/v2/README.md).
+Start with [docs/YUEBO_VARIANT.md](docs/YUEBO_VARIANT.md) for the benchmark design, reproduction commands, and measured results. The current pivot readout is in [docs/PIVOT_RESULTS.md](docs/PIVOT_RESULTS.md). Operational benchmark usage is documented in [benchmarks/README.md](benchmarks/README.md), the v2 experiment is documented in [benchmarks/v2/README.md](benchmarks/v2/README.md), and pivot experiments are documented in [benchmarks/pivots/README.md](benchmarks/pivots/README.md).
 
 Quick build:
 
 ```bash
 make all bench_cpu bench_cuda bench_cuda_v2
+make bench_pivots
 ```
 
 Quick benchmark smoke test:
@@ -26,6 +28,7 @@ Quick benchmark smoke test:
 ```bash
 /home/luo00466/miniconda3/envs/py310/bin/python benchmarks/run_benchmarks.py --quick --device 7 --out bench_results/quick
 /home/luo00466/miniconda3/envs/py310/bin/python benchmarks/v2/run_v2_benchmarks.py --quick --device 7 --out bench_results/v2_quick
+/home/luo00466/miniconda3/envs/py310/bin/python benchmarks/pivots/run_pivot_benchmarks.py --quick --device 7 --out bench_results/pivots/quick
 ```
 
 ## Authors

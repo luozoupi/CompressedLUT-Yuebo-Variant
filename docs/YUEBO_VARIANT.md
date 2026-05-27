@@ -10,6 +10,7 @@ This branch keeps the upstream CompressedLUT command-line tool intact and adds s
 - `benchmarks/bench_cuda.cu` measures CUDA plain LUT, CompressedLUT decode, and CUDA math evaluation.
 - `benchmarks/profile_cuda.sh` and `benchmarks/profile_all_cuda.sh` run focused Nsight Systems and Nsight Compute profiles.
 - `benchmarks/v2/bench_cuda_v2.cu` adds a GPU-oriented runtime layout that pre-expands the top-level bias table while preserving the compact storage artifact.
+- `benchmarks/pivots/` adds follow-up experiments for large LUTs, many physical LUTs, and LLM-style grouped codebook traffic.
 
 Generated benchmark binaries and result directories are ignored by git. Re-run the commands below to regenerate local results.
 
@@ -17,6 +18,7 @@ Generated benchmark binaries and result directories are ignored by git. Re-run t
 
 ```bash
 make all bench_cpu bench_cuda bench_cuda_v2
+make bench_pivots
 ```
 
 The CUDA targets default to `-arch=sm_120`, matching the Blackwell GPUs on the benchmark server.
@@ -33,6 +35,12 @@ Run the CUDA v2 comparison:
 
 ```bash
 /home/luo00466/miniconda3/envs/py310/bin/python benchmarks/v2/run_v2_benchmarks.py --device 7 --out bench_results/v2/latest
+```
+
+Run the pivot experiments:
+
+```bash
+/home/luo00466/miniconda3/envs/py310/bin/python benchmarks/pivots/run_pivot_benchmarks.py --device 7 --out bench_results/pivots/latest
 ```
 
 The runners write CSV files and compact Markdown summaries under `bench_results/`. Those files are treated as generated artifacts and are not committed.
@@ -130,3 +138,13 @@ The stronger direction is compression-aware LUT systems for memory-capacity and 
 - FPGA/ASIC settings where the original paper's throughput-per-resource argument maps directly to hardware cost.
 
 The CUDA v2 result supports this pivot: it nearly recovers plain-LUT throughput on small tables while preserving a compressed storage story, making larger memory-bound experiments the next important benchmark target.
+
+## Pivot Experiments
+
+The pivot suite turns that recommendation into runnable tests:
+
+- `large_lut`: grows a single smooth function LUT and checks when plain-LUT cache residency stops dominating.
+- `many_lut`: creates many physical LUT instances to stress aggregate cache footprint and memory locality.
+- `llm_lut`: simulates grouped codebook lookup plus activation multiply, with both per-group and shared-codebook plain baselines.
+
+Use [benchmarks/pivots/README.md](../benchmarks/pivots/README.md) for the command line and result files. The current GPU 7 result snapshot is in [docs/PIVOT_RESULTS.md](PIVOT_RESULTS.md).
