@@ -14,7 +14,7 @@ Added components:
 - A CUDA v2 experiment under `benchmarks/v2/` that keeps the compact storage artifact but uses a GPU-oriented runtime layout.
 - Pivot benchmarks under `benchmarks/pivots/` for large LUTs, many-LUT cache pressure, and LLM-style grouped LUT traffic.
 
-Start with [docs/YUEBO_VARIANT.md](docs/YUEBO_VARIANT.md) for the benchmark design, reproduction commands, and measured results. The current pivot readout is in [docs/PIVOT_RESULTS.md](docs/PIVOT_RESULTS.md). Operational benchmark usage is documented in [benchmarks/README.md](benchmarks/README.md), the v2 experiment is documented in [benchmarks/v2/README.md](benchmarks/v2/README.md), and pivot experiments are documented in [benchmarks/pivots/README.md](benchmarks/pivots/README.md).
+Start with [docs/RESEARCH_REPORT.md](docs/RESEARCH_REPORT.md) for the consolidated progress report and research direction. [docs/YUEBO_VARIANT.md](docs/YUEBO_VARIANT.md) covers the benchmark design and reproduction commands, and the current pivot readout is in [docs/PIVOT_RESULTS.md](docs/PIVOT_RESULTS.md). Operational benchmark usage is documented in [benchmarks/README.md](benchmarks/README.md), the v2 experiment is documented in [benchmarks/v2/README.md](benchmarks/v2/README.md), and pivot experiments are documented in [benchmarks/pivots/README.md](benchmarks/pivots/README.md).
 
 Quick build:
 
